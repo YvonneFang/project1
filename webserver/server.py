@@ -3,14 +3,9 @@
 """
 Columbia W4111 Intro to databases
 Example webserver
-
 To run locally
-
     python server.py
-
 Go to http://localhost:8111 in your browser
-
-
 A debugger such as "pdb" may be helpful for debugging.
 Read about it online.
 """
@@ -41,7 +36,7 @@ DB_PASSWORD = "2atj5yd7"
 
 DB_SERVER = "w4111.cisxo09blonu.us-east-1.rds.amazonaws.com"
 
-DATABASEURI = "postgresql://"+"yf2486"+":"+"2atj5yd7"+"@"+"w4111.cisxo09blonu.us-east-1.rds.amazonaws.com"+"/w4111"
+DATABASEURI = "postgresql://"+DB_USER+":"+DB_PASSWORD+"@"+DB_SERVER+"/w4111"
 
 
 #
@@ -66,7 +61,6 @@ def before_request():
   This function is run at the beginning of every web request 
   (every time you enter an address in the web browser).
   We use it to setup a database connection that can be used throughout the request
-
   The variable g is globally accessible
   """
   try:
@@ -105,11 +99,9 @@ def teardown_request(exception):
 def index():
   """
   request is a special object that Flask provides to access web request information:
-
   request.method:   "GET" or "POST"
   request.form:     if the browser submitted a form, this contains the data in the form
   request.args:     dictionary of URL arguments e.g., {a:1, b:2} for http://localhost?a=1&b=2
-
   See its API: http://flask.pocoo.org/docs/0.10/api/#incoming-request-data
   """
 
@@ -120,11 +112,16 @@ def index():
   #
   # example of a database query
   #
-  cursor = g.conn.execute("SELECT name FROM test")
+  cursor1 = g.conn.execute("SELECT name FROM test")
+  cursor2 = g.conn.execute("SELECT id FROM test")
   names = []
-  for result in cursor:
+  ids = []
+  for result in cursor1:
     names.append(result['name'])  # can also be accessed using result[0]
-  cursor.close()
+  for i in cursor2:
+    ids.append(i['id'])
+  cursor1.close()
+  cursor2.close()
 
   #
   # Flask uses Jinja templates, which is an extension to HTML where you can
@@ -152,7 +149,7 @@ def index():
   #     <div>{{n}}</div>
   #     {% endfor %}
   #
-  context = dict(data = names)
+  context = dict(data1 = names, data2 = ids)
 
 
   #
@@ -202,13 +199,9 @@ if __name__ == "__main__":
     """
     This function handles command line parameters.
     Run the server using
-
         python server.py
-
     Show the help text using
-
         python server.py --help
-
     """
 
     HOST, PORT = host, port

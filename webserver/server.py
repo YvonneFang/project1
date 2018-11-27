@@ -20,7 +20,7 @@ DATABASEURI = "postgresql://"+DB_USER+":"+DB_PASSWORD+"@"+DB_SERVER+"/w4111"
 #
 # This line creates a database engine that knows how to connect to the URI above
 #
-engine = create_engine(DATABASEURI)
+engine = create_engine("postgresql://yf2486:2atj5yd7@w4111.cisxo09blonu.us-east-1.rds.amazonaws.com/w4111")
 
 
 @app.before_request

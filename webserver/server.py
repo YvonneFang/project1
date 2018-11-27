@@ -232,16 +232,16 @@ def artist():
     else:
     	op = 'SELECT * from artist where name = (:name)'
     	cursor = g.conn.execute(text(op), name = artist_name)
-		artist = cursor.fetchone()
-		cursor.close()
-		op = 'SELECT p.name from artist as a,created as c,painting_stored_included as p where a.artist_id = c.artist and p.painting_id = c.painting and a.name = (:name)'    	
-		cursor = g.conn.execute(text(op), name = artist_name)
-		painting_created =[]
-		for p in cursor:
-			painting_created.append(p[0])
-		cursor.close()
-		context = dict(artist = artist, painting_created = painting_created)
-		return render_template('artist.html', **context)
+	artist = cursor.fetchone()
+	cursor.close()
+	op = 'SELECT p.name from artist as a,created as c,painting_stored_included as p where a.artist_id = c.artist and p.painting_id = c.painting and a.name = (:name)'    	
+	cursor = g.conn.execute(text(op), name = artist_name)
+	painting_created =[]
+	for p in cursor:
+		painting_created.append(p[0])
+	cursor.close()
+	context = dict(artist = artist, painting_created = painting_created)
+	return render_template('artist.html', **context)
 
 #funcations related to memberships 
 @app.route('/all_memberships')

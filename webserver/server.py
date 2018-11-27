@@ -1,36 +1,15 @@
-#!/usr/bin/env python2.7
-
-"""
-Columbia W4111 Intro to databases
-Example webserver
-To run locally
-    python server.py
-Go to http://localhost:8111 in your browser
-A debugger such as "pdb" may be helpful for debugging.
-Read about it online.
-"""
-
+#this is custom server
 import os
 from sqlalchemy import *
 from sqlalchemy.pool import NullPool
 from flask import Flask, request, render_template, g, redirect, Response
+from flask import flash, session, abort
 
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__, template_folder=tmpl_dir)
+app.secret_key = "super secret key"
 
 
-
-# XXX: The Database URI should be in the format of: 
-#
-#     postgresql://USER:PASSWORD@<IP_OF_POSTGRE_SQL_SERVER>/<DB_NAME>
-#
-# For example, if you had username ewu2493, password foobar, then the following line would be:
-#
-#     DATABASEURI = "postgresql://ewu2493:foobar@<IP_OF_POSTGRE_SQL_SERVER>/postgres"
-#
-# For your convenience, we already set it to the class database
-
-# Use the DB credentials you received by e-mail
 DB_USER = "yf2486"
 DB_PASSWORD = "2atj5yd7"
 
@@ -38,21 +17,10 @@ DB_SERVER = "w4111.cisxo09blonu.us-east-1.rds.amazonaws.com"
 
 DATABASEURI = "postgresql://"+DB_USER+":"+DB_PASSWORD+"@"+DB_SERVER+"/w4111"
 
-
 #
 # This line creates a database engine that knows how to connect to the URI above
 #
 engine = create_engine(DATABASEURI)
-
-
-# Here we create a test table and insert some values in it
-engine.execute("""DROP TABLE IF EXISTS test;""")
-engine.execute("""CREATE TABLE IF NOT EXISTS test (
-  id serial,
-  name text
-);""")
-engine.execute("""INSERT INTO test(name) VALUES ('grace hopper'), ('alan turing'), ('ada lovelace');""")
-
 
 
 @app.before_request
@@ -82,114 +50,275 @@ def teardown_request(exception):
     pass
 
 
-#
-# @app.route is a decorator around index() that means:
-#   run index() whenever the user tries to access the "/" path using a GET request
-#
-# If you wanted the user to go to e.g., localhost:8111/foobar/ with POST or GET then you could use
-#
-#       @app.route("/foobar/", methods=["POST", "GET"])
-#
-# PROTIP: (the trailing / in the path is important)
-# 
-# see for routing: http://flask.pocoo.org/docs/0.10/quickstart/#routing
-# see for decorators: http://simeonfranklin.com/blog/2012/jul/1/python-decorators-in-12-steps/
-#
+#custom routers
+
+#home page 
 @app.route('/')
-def index():
-  """
-  request is a special object that Flask provides to access web request information:
-  request.method:   "GET" or "POST"
-  request.form:     if the browser submitted a form, this contains the data in the form
-  request.args:     dictionary of URL arguments e.g., {a:1, b:2} for http://localhost?a=1&b=2
-  See its API: http://flask.pocoo.org/docs/0.10/api/#incoming-request-data
-  """
+def home():
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    else:
+        return render_template('home.html')
 
-  # DEBUG: this is debugging code to see what request looks like
-  print request.args
+#functions of log in and log out
+@app.route('/login', methods=['POST'])
+def do_admin_login():
+	cursor = g.conn.execute("SELECT user_id FROM users")
+    user_ids = []
+    for p in cursor:
+    	
+        user_ids.append(str(p['user_id']))
+    cursor.close()
 
+    if  request.form['user_id'] in user_ids:
+        session['logged_in'] = True
+        session['user_id'] = int(request.form['user_id'])
+    else:
+        flash('There is no such user')
+    return home()
 
-  #
-  # example of a database query
-  #
-  cursor1 = g.conn.execute("SELECT name FROM test")
-  cursor2 = g.conn.execute("SELECT id FROM test")
-  names = []
-  ids = []
-  for result in cursor1:
-    names.append(result['name'])  # can also be accessed using result[0]
-  for i in cursor2:
-    ids.append(i['id'])
-  cursor1.close()
-  cursor2.close()
+@app.route("/logout")
+def logout():
+    session['logged_in'] = False
+    session['user_id'] = 0
+	return redirect('/')
 
-  #
-  # Flask uses Jinja templates, which is an extension to HTML where you can
-  # pass data to a template and dynamically generate HTML based on the data
-  # (you can think of it as simple PHP)
-  # documentation: https://realpython.com/blog/python/primer-on-jinja-templating/
-  #
-  # You can see an example template in templates/index.html
-  #
-  # context are the variables that are passed to the template.
-  # for example, "data" key in the context variable defined below will be 
-  # accessible as a variable in index.html:
-  #
-  #     # will print: [u'grace hopper', u'alan turing', u'ada lovelace']
-  #     <div>{{data}}</div>
-  #     
-  #     # creates a <div> tag for each element in data
-  #     # will print: 
-  #     #
-  #     #   <div>grace hopper</div>
-  #     #   <div>alan turing</div>
-  #     #   <div>ada lovelace</div>
-  #     #
-  #     {% for n in data %}
-  #     <div>{{n}}</div>
-  #     {% endfor %}
-  #
-  context = dict(data1 = names, data2 = ids)
+#functions related to paintings 
+@app.route("/all_paintings")
+def all_paintings():
+	cursor = g.conn.execute("SELECT name FROM painting_stored_included")
+    painting_names = []
+    for p in cursor:
+        painting_names.append(p['name'])
+    cursor.close()
 
+    context = dict(paintings = painting_names)
+	return render_template('all_paintings.html', **context)
 
-  #
-  # render_template looks in the templates/ folder for files.
-  # for example, the below file reads template/index.html
-  #
-  return render_template("index.html", **context)
+@app.route("/painting",methods=['POST'])
+def painting():
+	cursor = g.conn.execute("SELECT name FROM painting_stored_included")
+    painting_names = []
+    for p in cursor:
+        painting_names.append(p['name'])
+    cursor.close()	
 
-#
-# This is an example of a different path.  You can see it at
-# 
-#     localhost:8111/another
-#
-# notice that the functio name is another() rather than index()
-# the functions for each app.route needs to have different names
-#
-@app.route('/another')
-def another():
-  return render_template("anotherfile.html")
+    painting_name = request.form['painting']
+    if painting_name not in painting_names:
+    	flash("There's no such painting")
+    	return redirect('/')
+    else:
+    	op1 = """select p.name,p.date,p.medium,p.painting_id,p.price,p.status,a.name,g.name 
+		from painting_stored_included as p,created as c, gallery as g,artist as a 
+		where p.painting_id=c.painting and c.artist=a.artist_id and p.gallery=g.gallery_id and p.name=(:name1)"""
+    	cursor = g.conn.execute(text(op1), name1 = painting_name)
+    	painting = cursor.fetchone()
+    	cursor.close()	
+    	session['painting_id'] = painting[3]
+    	session['painting_name'] = painting[0]
+    	session['painting_price'] = painting[4]
+    	context = dict(painting = painting)
+    return render_template("painting.html", **context)
 
 
-# Example of adding new data to the database
-@app.route('/add', methods=['POST'])
-def add():
-  name = request.form['name']
-  print name
-  cmd = 'INSERT INTO test(name) VALUES (:name1), (:name2)';
-  g.conn.execute(text(cmd), name1 = name, name2 = name);
-  return redirect('/')
+@app.route("/painting_order")
+def painting_order():
+	order_items = session['painting_name']
+	total_price = session['painting_price'] 
+	user_id = session['user_id']
+	op = 'SELECT status FROM painting_stored_included WHERE name = (:name)'
+	cursor = g.conn.execute(text(op), name = order_items)
+	status = cursor.fetchone()[0]
+	cursor.close()
+	if status == False:
+		flash('The picture has been bought')
+		return redirect("/")
+	else:
+		cursor = g.conn.execute('SELECT max(order_number) FROM order_made')
+		order_number = cursor.fetchone()[0]
+		cursor.close()
+		order_number  = order_number + 1
+		op = 'INSERT INTO order_made(order_number,order_items,total_price,user_id) VALUES ((:a),(:b),(:c),(:d))'
+		g.conn.execute(text(op),a = order_number, b = order_items,c = total_price, d = user_id)
+		op = 'UPDATE painting_stored_included SET status = False, order_number = (:a) WHERE name = (:b)'
+		g.conn.execute(text(op),a = order_number,b = order_items)
+		flash('Thank you for purchasing')
+		return redirect("/")
+
+#functions related to galleries
+@app.route("/all_galleries")
+def all_galleries():
+	cursor = g.conn.execute("SELECT name FROM gallery")
+    gallery_names = []
+    for p in cursor:
+        gallery_names.append(p['name'])
+    cursor.close()
+
+    context = dict(galleries = gallery_names)
+	return render_template('all_galleries.html', **context)
 
 
-@app.route('/login')
-def login():
-    abort(401)
-    this_is_never_executed()
+@app.route("/gallery",methods=['POST'])
+def gallery():
+	cursor = g.conn.execute("SELECT name FROM gallery")
+    gallery_names = []
+    for p in cursor:
+        gallery_names.append(p['name'])
+    cursor.close()		
+    gallery_name = request.form['gallery']
+    if gallery_name not in gallery_names:
+    	flash("There's no such gallery")
+    	return redirect('/')
+    else:
+    	op = 'SELECT * FROM gallery WHERE name = (:name)'
+    	cursor = g.conn.execute(text(op), name = gallery_name)
+    	gallery = cursor.fetchone()
+    	cursor.close()
+    	op = 'SELECT p.name from painting_stored_included as p, gallery as g where g.gallery_id = p.gallery and g.name = (:gallery_name)'
+    	cursor = g.conn.execute(text(op), gallery_name = gallery_name)
+    	paintings_stored = []
+    	for n in cursor:
+    		paintings_stored.append(n[0])
+    	cursor.close()
+    	op = 'SELECT m.membership_id from membership as m, gallery as g where g.gallery_id = m.affiliation and g.name = (:gallery_name)'
+    	cursor = g.conn.execute(text(op), gallery_name = gallery_name)
+    	membership_id = cursor.fetchone()
+    	cursor.close()
+    	context = dict(gallery = gallery, paintings_stored = paintings_stored,membership_id = membership_id)
+    	session['gallery_id'] = gallery['gallery_id']
+    	return render_template('gallery.html', **context)
 
+@app.route('/donate',methods = ['POST'])
+def donate():
+    amount = request.form['amount']
+    cursor = g.conn.execute('SELECT max(donation_id) FROM donation')
+    donation_id = cursor.fetchone()[0] + 1
+    session['donation_id'] = donation_id
+    cursor.close()
+    op = 'INSERT INTO donation(amount, donation_id) VALUES ((:amount),(:donation_id)) '
+    g.conn.execute(text(op), amount = amount, donation_id = donation_id)
+    users = session['user_id']
+    gallery = session['gallery_id']
+    donation = session['donation_id']
+    op = 'INSERT INTO donate_to(users,gallery,donation) VALUES ((:users),(:gallery),(:donation))'
+    g.conn.execute(text(op), users = users, gallery = gallery, donation = donation)
+    flash('Thanks for your donation')
+    return redirect('/')
+
+#functions related to artists
+
+@app.route('/all_artists')
+def all_artists():
+	cursor = g.conn.execute("SELECT name FROM artist")
+    artist_names = []
+    for p in cursor:
+        artist_names.append(p['name'])
+    cursor.close()
+
+    context = dict(artist_names = artist_names)
+	return render_template('all_artists.html', **context)
+
+@app.route('/artist', methods=['POST'])
+def artist():
+	cursor = g.conn.execute("SELECT name FROM artist")
+    artist_names = []
+    for p in cursor:
+        artist_names.append(p['name'])
+    cursor.close()		
+    artist_name = request.form['artist']
+    if artist_name not in artist_names:
+    	flash("There's no such artist")
+    	return redirect('/')
+    else:
+    	op = 'SELECT * from artist where name = (:name)'
+    	cursor = g.conn.execute(text(op), name = artist_name)
+		artist = cursor.fetchone()
+		cursor.close()
+		op = 'SELECT p.name from artist as a,created as c,painting_stored_included as p where a.artist_id = c.artist and p.painting_id = c.painting and a.name = (:name)'    	
+		cursor = g.conn.execute(text(op), name = artist_name)
+		painting_created =[]
+		for p in cursor:
+			painting_created.append(p[0])
+		cursor.close()
+		context = dict(artist = artist, painting_created = painting_created)
+		return render_template('artist.html', **context)
+
+#funcations related to memberships 
+@app.route('/all_memberships')
+def all_memberships():
+	cursor = g.conn.execute("SELECT membership_id FROM membership")
+    membership_ids = []
+    for p in cursor:
+        membership_ids.append(p['membership_id'])
+    cursor.close()		
+    context = dict(membership_ids = membership_ids)
+	return render_template('all_memberships.html', **context)
+
+@app.route('/membership',methods =['POST'] )
+def membership():	
+	cursor = g.conn.execute("SELECT membership_id FROM membership")
+    membership_ids = []
+    for p in cursor:
+        membership_ids.append(str(p['membership_id']))
+    cursor.close()		
+    membership_id = request.form['membership']
+    if membership_id not in membership_ids:
+    	flash("There's no such membership")
+    	return redirect('/')	
+    else:
+    	op = 'SELECT m.membership_id, g.name, m.price from membership as m, gallery as g where m.affiliation = g.gallery_id and m.membership_id = (:id)'
+	    cursor = g.conn.execute(text(op), id = membership_id )
+	    membership = cursor.fetchone()
+	    cursor.close()
+	    session['membership_id'] = membership[0]
+	    session['membership_price'] = membership[2]
+	    context = dict(membership = membership)
+	    return render_template('membership.html',**context)	
+
+@app.route('/membership_order')
+def membership_order():
+	order_items = session['membership_id']
+	total_price = session['membership_price'] 
+	user_id = session['user_id']
+	cursor = g.conn.execute('SELECT max(order_number) FROM order_made')
+	order_number = cursor.fetchone()[0]
+	cursor.close()
+	order_number  = order_number + 1
+	op = 'INSERT INTO order_made(order_number,order_items,total_price,user_id) VALUES ((:a),(:b),(:c),(:d))'
+	g.conn.execute(text(op),a = order_number, b = order_items,c = total_price, d = user_id)
+	op = "SELECT affiliation from membership where membership_id = (:id)"
+	cursor = g.conn.execute(text(op), id = order_items )
+	affiliation = cursor.fetchone()[0]
+	op = 'INSERT INTO membership_included(affiliation,order_number,membership_id) values ((:a),(:b),(:c)) '
+	g.conn.execute(text(op),a = affiliation, b = order_number, c = order_items)
+	flash('Thanks for purchasing!')
+	return redirect('/')
+
+#check user history
+@app.route('/donation_history')
+def donation_history():
+	user_id = session['user_id']
+	op = 'SELECT g.name,d.amount from users as u, donation as d, gallery as g, donate_to as dt where u.user_id = dt.users and d.donation_id = dt.donation and g.gallery_id = dt.gallery and u.user_id = (:user_id)'
+	cursor = g.conn.execute(text(op),user_id = user_id)
+	donation  = []
+	for c in cursor:
+		donation.append(c)
+	context = dict(donation  = donation)
+	return render_template('donation_history.html',**context)
+
+@app.route('/order_history')
+def order_history():
+    user_id = session['user_id']
+    op = 'SELECT order_items, total_price from order_made where user_id = (:id)'
+    cursor = g.conn.execute(text(op),id = user_id)
+    order = []
+    for c in cursor:
+        order.append(c)
+    context = dict(order = order)
+    return render_template('order_history.html',**context)
 
 if __name__ == "__main__":
   import click
-
   @click.command()
   @click.option('--debug', is_flag=True)
   @click.option('--threaded', is_flag=True)

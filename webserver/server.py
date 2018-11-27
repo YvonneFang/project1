@@ -267,13 +267,13 @@ def membership():
     	return redirect('/')	
     else:
     	op = 'SELECT m.membership_id, g.name, m.price from membership as m, gallery as g where m.affiliation = g.gallery_id and m.membership_id = (:id)'
-	    cursor = g.conn.execute(text(op), id = membership_id )
-	    membership = cursor.fetchone()
-	    cursor.close()
-	    session['membership_id'] = membership[0]
-	    session['membership_price'] = membership[2]
-	    context = dict(membership = membership)
-	    return render_template('membership.html',**context)	
+	cursor = g.conn.execute(text(op), id = membership_id )
+	membership = cursor.fetchone()
+	cursor.close()
+	session['membership_id'] = membership[0]
+	session['membership_price'] = membership[2]
+	context = dict(membership = membership)
+	return render_template('membership.html',**context)	
 
 @app.route('/membership_order')
 def membership_order():

@@ -20,7 +20,7 @@ DATABASEURI = "postgresql://"+DB_USER+":"+DB_PASSWORD+"@"+DB_SERVER+"/w4111"
 #
 # This line creates a database engine that knows how to connect to the URI above
 #
-engine = create_engine("postgresql://yf2486:2atj5yd7@w4111.cisxo09blonu.us-east-1.rds.amazonaws.com/w4111")
+engine = create_engine(DATABASEURI)
 
 
 @app.before_request
@@ -64,7 +64,7 @@ def home():
 @app.route('/login', methods=['POST'])
 def do_admin_login():
 	cursor = g.conn.execute("SELECT user_id FROM users")
-    user_ids = []
+        user_ids = []
     for p in cursor:
     	
         user_ids.append(str(p['user_id']))
@@ -81,23 +81,23 @@ def do_admin_login():
 def logout():
     session['logged_in'] = False
     session['user_id'] = 0
-	return redirect('/')
+    return redirect('/')
 
 #functions related to paintings 
 @app.route("/all_paintings")
 def all_paintings():
-	cursor = g.conn.execute("SELECT name FROM painting_stored_included")
+    cursor = g.conn.execute("SELECT name FROM painting_stored_included")
     painting_names = []
     for p in cursor:
         painting_names.append(p['name'])
     cursor.close()
 
     context = dict(paintings = painting_names)
-	return render_template('all_paintings.html', **context)
+    return render_template('all_paintings.html', **context)
 
 @app.route("/painting",methods=['POST'])
 def painting():
-	cursor = g.conn.execute("SELECT name FROM painting_stored_included")
+    cursor = g.conn.execute("SELECT name FROM painting_stored_included")
     painting_names = []
     for p in cursor:
         painting_names.append(p['name'])
@@ -148,19 +148,19 @@ def painting_order():
 #functions related to galleries
 @app.route("/all_galleries")
 def all_galleries():
-	cursor = g.conn.execute("SELECT name FROM gallery")
+    cursor = g.conn.execute("SELECT name FROM gallery")
     gallery_names = []
     for p in cursor:
         gallery_names.append(p['name'])
     cursor.close()
 
     context = dict(galleries = gallery_names)
-	return render_template('all_galleries.html', **context)
+    return render_template('all_galleries.html', **context)
 
 
 @app.route("/gallery",methods=['POST'])
 def gallery():
-	cursor = g.conn.execute("SELECT name FROM gallery")
+    cursor = g.conn.execute("SELECT name FROM gallery")
     gallery_names = []
     for p in cursor:
         gallery_names.append(p['name'])
@@ -209,18 +209,18 @@ def donate():
 
 @app.route('/all_artists')
 def all_artists():
-	cursor = g.conn.execute("SELECT name FROM artist")
+    cursor = g.conn.execute("SELECT name FROM artist")
     artist_names = []
     for p in cursor:
         artist_names.append(p['name'])
     cursor.close()
 
     context = dict(artist_names = artist_names)
-	return render_template('all_artists.html', **context)
+    return render_template('all_artists.html', **context)
 
 @app.route('/artist', methods=['POST'])
 def artist():
-	cursor = g.conn.execute("SELECT name FROM artist")
+    cursor = g.conn.execute("SELECT name FROM artist")
     artist_names = []
     for p in cursor:
         artist_names.append(p['name'])
@@ -246,17 +246,17 @@ def artist():
 #funcations related to memberships 
 @app.route('/all_memberships')
 def all_memberships():
-	cursor = g.conn.execute("SELECT membership_id FROM membership")
+    cursor = g.conn.execute("SELECT membership_id FROM membership")
     membership_ids = []
     for p in cursor:
         membership_ids.append(p['membership_id'])
     cursor.close()		
     context = dict(membership_ids = membership_ids)
-	return render_template('all_memberships.html', **context)
+    return render_template('all_memberships.html', **context)
 
 @app.route('/membership',methods =['POST'] )
 def membership():	
-	cursor = g.conn.execute("SELECT membership_id FROM membership")
+    cursor = g.conn.execute("SELECT membership_id FROM membership")
     membership_ids = []
     for p in cursor:
         membership_ids.append(str(p['membership_id']))

@@ -63,8 +63,8 @@ def home():
 #functions of log in and log out
 @app.route('/login', methods=['POST'])
 def do_admin_login():
-	cursor = g.conn.execute("SELECT user_id FROM users")
-        user_ids = []
+    cursor = g.conn.execute("SELECT user_id FROM users")
+    user_ids = []
     for p in cursor:
     	
         user_ids.append(str(p['user_id']))
